@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Générateur de codes-barres / Barcode Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bwip-js/4.5.1/bwip-js-min.js"></script>
+<style>
+:root {
+  --bg:          #f0ede8;
+  --surface:     #ffffff;
+  --surface-sub: #fafaf8;
+  --border:      #d0cdc8;
+  --border-lt:   #e8e5e0;
+  --text:        #1a1a1a;
+  --muted:       #888;
+  --hint:        #aaa;
+  --accent:      #1a1a1a;
+  --green:       #2e7d32;
+  --ghost-bg:    #f0ede8;
+  --ghost-text:  #555;
+  --red:         #c62828;
+  --blue:        #2563eb;
+  --blue-lt:     #eff6ff;
+  --orange:      #c2410c;
+  --orange-lt:   #fff7ed;
+  --purple:      #7c3aed;
+  --purple-lt:   #f5f3ff;
+  --selected-bg: #f4f3f1;
+  --shadow:      0 1px 3px rgba(0,0,0,0.07);
+  --r:           8px;
+  --r-sm:        5px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+
+.screen-ui { flex: 1; display: flex; flex-direction: column; width: 100%; max-width: 1200px; margin: 0 auto; padding: 0.9rem 1.1rem 0; min-height: 0; }
+
+/* ── Header ── */
+header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding-bottom: 0.7rem; margin-bottom: 0.6rem; border-bottom: 2px solid var(--border); flex-wrap: wrap; flex-shrink: 0; }
+header h1 { font-size: clamp(0.95rem, 2vw, 1.25rem); font-weight: 700; letter-spacing: -0.02em; }
+.subtitle { font-size: 0.7rem; color: var(--muted); }
+.lang-toggle { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.lang-btn { padding: 0.24rem 0.58rem; font-size: 0.72rem; font-weight: 600; cursor: pointer; background: var(--surface); border: none; color: var(--muted); transition: background .12s, color .12s; }
+.lang-btn.active { background: var(--accent); color: #fff; }
+.lang-btn:not(.active):hover { background: var(--ghost-bg); }
+
+/* ── Scenario tabs ── */
+.scenario-bar { display: flex; gap: 0; margin-bottom: 0.7rem; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.sc-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.45rem 0.6rem; font-size: 0.72rem; font-weight: 600; cursor: pointer; border: none; background: none; color: var(--muted); transition: background .12s, color .12s; border-right: 1px solid var(--border); user-select: none; }
+.sc-tab:last-child { border-right: none; }
+.sc-tab:hover { background: var(--surface-sub); color: var(--text); }
+.sc-tab.active { background: var(--accent); color: #fff; }
+.sc-tab.active.rec { background: #c2410c; }
+.sc-tab.active.pick { background: #7c3aed; }
+.sc-tab svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+/* ── Grid ── */
+.layout { flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; align-items: stretch; min-height: 0; }
+.col { display: flex; flex-direction: column; min-height: 0; }
+
+/* ── Panels ── */
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 0.85rem; display: flex; flex-direction: column; flex: 1; min-height: 0; box-shadow: var(--shadow); }
+.panel-stack { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.sub-panel { background: var(--surface); border: 1px solid var(--border); border-bottom: none; padding: 0.75rem 0.85rem; }
+.sub-panel:first-child { border-radius: var(--r) var(--r) 0 0; }
+.sub-panel:last-child  { border-radius: 0 0 var(--r) var(--r); border-bottom: 1px solid var(--border); flex: 1; box-shadow: var(--shadow); }
+.panel-title { font-size: 0.6rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.65rem; padding-bottom: 0.32rem; border-bottom: 1px solid var(--border-lt); flex-shrink: 0; }
+
+/* ── Scenario panels (col 1 variants) ── */
+.scenario-panel { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 0.85rem; flex-direction: column; flex: 1; min-height: 0; box-shadow: var(--shadow); overflow-y: auto; }
+.scenario-panel.active { display: flex; }
+
+.scenario-panel.rec-panel { border-color: #fdba74; }
+.scenario-panel.pick-panel { border-color: #c4b5fd; }
+
+.scenario-panel .panel-title.rec  { color: var(--orange); border-color: #fdba74; }
+.scenario-panel .panel-title.pick { color: var(--purple); border-color: #c4b5fd; }
+
+/* WMS flow diagram */
+.wms-flow { display: flex; align-items: center; gap: 0.35rem; background: var(--surface-sub); border: 1px solid var(--border-lt); border-radius: 6px; padding: 0.45rem 0.6rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+.wms-node { font-size: 0.65rem; font-weight: 700; padding: 0.2rem 0.45rem; border-radius: 4px; white-space: nowrap; }
+.wms-node.quai  { background: #fed7aa; color: #9a3412; border: 1px solid #fdba74; }
+.wms-node.poumon-rec { background: #bbf7d0; color: #166534; border: 1px solid #86efac; }
+.wms-node.stock { background: #ddd6fe; color: #5b21b6; border: 1px solid #c4b5fd; }
+.wms-node.pick  { background: #bfdbfe; color: #1e40af; border: 1px solid #93c5fd; }
+.wms-node.poumon-exp { background: #fde68a; color: #92400e; border: 1px solid #fcd34d; }
+.wms-arrow { font-size: 0.75rem; color: var(--muted); }
+
+/* ── Forms ── */
+.field { margin-bottom: 0.52rem; }
+.field:last-child { margin-bottom: 0; }
+label.field-label { display: block; font-size: 0.6rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.2rem; }
+textarea, select, input[type="number"], input[type="text"] {
+  width: 100%; padding: 0.32rem 0.48rem; border: 1px solid var(--border); border-radius: var(--r-sm);
+  font-size: 0.78rem; font-family: inherit; background: var(--surface-sub); color: var(--text);
+  outline: none; transition: border-color .15s; -webkit-appearance: none;
+}
+textarea:focus, select:focus, input:focus { border-color: var(--accent); background: var(--surface); }
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 0.5rem center;
+  background-color: var(--surface-sub); padding-right: 1.5rem; cursor: pointer;
+}
+#input-text { font-family: 'Consolas','Courier New',monospace; line-height: 1.6; resize: none; flex: 1; min-height: 0; }
+textarea.fixed { resize: vertical; height: 62px; flex: none; }
+.hint { font-size: 0.6rem; color: var(--hint); margin-top: 0.22rem; line-height: 1.4; flex-shrink: 0; }
+.hint code { background: var(--ghost-bg); padding: 0 3px; border-radius: 3px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.45rem; }
+.sep  { height: 1px; background: var(--border-lt); margin: 0.52rem 0; }
+
+/* section divider within scenario panel */
+.sc-section { margin-bottom: 0.6rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border-lt); }
+.sc-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.sc-section-title { font-size: 0.58rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.38rem; }
+
+/* preview box of generated codes */
+.sc-preview-box { background: var(--surface-sub); border: 1px solid var(--border-lt); border-radius: 5px; padding: 0.45rem 0.55rem; font-family: 'Consolas','Courier New',monospace; font-size: 0.62rem; color: var(--text); white-space: pre; overflow-x: auto; max-height: 100px; overflow-y: auto; margin-top: 0.38rem; line-height: 1.6; }
+.sc-preview-box .fam { color: #1a1a1a; font-weight: 700; }
+.sc-preview-box .code { color: #555; }
+
+/* ── Format compact radio ── */
+.format-group { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.52rem; }
+.format-option { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: var(--r-sm); transition: border-color .13s, background .11s; line-height: 1; }
+.format-option:hover { background: var(--surface-sub); }
+.format-option input[type="radio"] { accent-color: var(--accent); flex-shrink: 0; margin: 0; width: 13px; height: 13px; }
+.format-option.selected { border-color: var(--accent); background: var(--selected-bg); }
+.fmt-row { display: flex; align-items: baseline; gap: 0.4rem; flex: 1; min-width: 0; }
+.fmt-name { font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+.fmt-tip  { font-size: 0.6rem; color: var(--hint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Buttons ── */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; padding: 0.38rem 0.7rem; border: none; border-radius: var(--r-sm); font-size: 0.74rem; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+.btn:active { transform: scale(0.97); }
+.btn:hover  { opacity: 0.85; }
+.btn-dark   { background: var(--accent); color: #fff; }
+.btn-green  { background: var(--green);  color: #fff; }
+.btn-ghost  { background: var(--ghost-bg); color: var(--ghost-text); border: 1px solid var(--border); }
+.btn-orange { background: var(--orange); color: #fff; }
+.btn-purple { background: var(--purple); color: #fff; }
+.btn-full   { width: 100%; }
+.btn-sm     { padding: 0.25rem 0.5rem; font-size: 0.68rem; }
+.actions    { display: flex; gap: 0.38rem; margin-top: 0.52rem; flex-wrap: wrap; flex-shrink: 0; }
+#stats      { font-size: 0.65rem; color: var(--muted); margin-top: 0.35rem; min-height: 1em; flex-shrink: 0; }
+#stats strong { color: var(--text); }
+#error-msg  { font-size: 0.65rem; color: var(--red); margin-top: 0.2rem; min-height: 1em; flex-shrink: 0; }
+
+/* ── Charset toggles ── */
+.charset-group { display: flex; gap: 0.28rem; flex-wrap: wrap; margin-bottom: 0.42rem; }
+.charset-toggle { display: flex; align-items: center; gap: 0.18rem; padding: 0.16rem 0.38rem; border: 1px solid var(--border); border-radius: 20px; font-size: 0.65rem; cursor: pointer; transition: all .12s; user-select: none; background: var(--surface-sub); }
+.charset-toggle input { display: none; }
+.charset-toggle.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── Preview ── */
+.preview-scroll { flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-sub); min-height: 0; }
+.preview-empty  { padding: 2rem 1rem; text-align: center; color: var(--hint); font-size: 0.74rem; }
+.preview-family-header { display: flex; align-items: center; justify-content: space-between; padding: 0.28rem 0.35rem 0.28rem 0.55rem; background: var(--ghost-bg); border-bottom: 1px solid var(--border-lt); position: sticky; top: 0; z-index: 2; }
+.preview-family-name { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.override-badge { font-size: 0.52rem; background: var(--blue); color: #fff; border-radius: 10px; padding: 0.08rem 0.38rem; margin-left: 0.35rem; font-weight: 600; }
+.btn-gear { display: flex; align-items: center; gap: 0.2rem; background: none; border: 1px solid transparent; border-radius: var(--r-sm); padding: 0.15rem 0.35rem; cursor: pointer; font-size: 0.6rem; color: var(--muted); transition: border-color .12s, background .12s, color .12s; white-space: nowrap; }
+.btn-gear:hover { border-color: var(--border); background: var(--surface); color: var(--text); }
+.btn-gear.active { border-color: var(--blue); background: var(--blue-lt); color: var(--blue); }
+.btn-gear svg { width: 11px; height: 11px; flex-shrink: 0; }
+.family-override { display: none; background: var(--blue-lt); border-bottom: 1px solid #bfdbfe; padding: 0.55rem 0.6rem; }
+.family-override.open { display: block; }
+.family-override .fo-title { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--blue); margin-bottom: 0.42rem; display: flex; align-items: center; justify-content: space-between; }
+.fo-reset { font-size: 0.58rem; font-weight: 600; color: var(--blue); background: none; border: 1px solid #93c5fd; border-radius: 4px; padding: 0.08rem 0.35rem; cursor: pointer; transition: background .12s; }
+.fo-reset:hover { background: #dbeafe; }
+.family-override .fo-fmt { display: flex; gap: 0.28rem; margin-bottom: 0.38rem; flex-wrap: wrap; }
+.fo-fmt-btn { padding: 0.18rem 0.45rem; border: 1px solid #93c5fd; border-radius: 4px; font-size: 0.65rem; font-weight: 600; cursor: pointer; background: var(--surface); color: var(--blue); transition: all .12s; }
+.fo-fmt-btn.sel { background: var(--blue); color: #fff; border-color: var(--blue); }
+.family-override .fo-dims { display: grid; grid-template-columns: 1fr 1fr; gap: 0.32rem; }
+.fo-dim-field { display: flex; flex-direction: column; gap: 0.12rem; }
+.fo-dim-field label { font-size: 0.55rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #2563eb99; }
+.fo-dim-field input { font-size: 0.72rem; padding: 0.25rem 0.35rem; border: 1px solid #93c5fd; border-radius: 4px; background: var(--surface); color: var(--text); outline: none; }
+.fo-dim-field input:focus { border-color: var(--blue); }
+.preview-barcodes { display: flex; flex-wrap: wrap; gap: 0.3rem; padding: 0.38rem 0.55rem; }
+.preview-item { text-align: center; background: #fff; border: 1px solid var(--border-lt); border-radius: 4px; padding: 0.22rem 0.28rem 0.15rem; }
+.preview-item svg, .preview-item canvas, .preview-item img { display: block; }
+.preview-item .bc-label { font-size: 0.52rem; color: var(--hint); margin-top: 2px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Footer ── */
+footer { text-align: center; padding: 0.5rem 1rem; font-size: 0.65rem; color: var(--hint); border-top: 1px solid var(--border-lt); flex-shrink: 0; letter-spacing: 0.02em; }
+footer strong { color: var(--muted); font-weight: 600; }
+
+/* ── Responsive tablet ── */
+@media (max-width: 900px) {
+  html, body { overflow: auto; height: auto; }
+  .screen-ui { padding-bottom: 0.9rem; }
+  .layout { grid-template-columns: 1fr 1fr; align-items: start; }
+  .col:nth-child(1) { grid-column: 1 / -1; }
+  .col:nth-child(2) { grid-column: 1; }
+  .col:nth-child(3) { grid-column: 2; }
+  #input-text { min-height: 150px; height: 150px; }
+  .preview-scroll { min-height: 280px; }
+  .col { flex: none; }
+}
+
+/* ── Responsive mobile ── */
+@media (max-width: 560px) {
+  html, body { overflow: auto; height: auto; }
+  .screen-ui { padding: 0.75rem 0.75rem 0.9rem; }
+  .layout { grid-template-columns: 1fr; gap: 0.65rem; }
+  .col:nth-child(1), .col:nth-child(2), .col:nth-child(3) { grid-column: 1; }
+  #input-text { min-height: 130px; height: 130px; }
+  .preview-scroll { min-height: 200px; max-height: 280px; }
+  .sc-tab span.tab-label { display: none; }
+}
+
+/* ── Print ── */
+@media print {
+  .screen-ui, footer { display: none !important; }
+  body { background: #fff !important; overflow: visible; height: auto; }
+  #print-area { display: block !important; }
+  .print-family-section { break-inside: avoid; margin-bottom: 10pt; }
+  .print-family-title { font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #333; border-bottom: 0.5pt solid #aaa; margin-bottom: 5pt; padding-bottom: 2pt; }
+  .print-barcodes { display: flex; flex-wrap: wrap; gap: 5pt; }
+  .print-item { text-align: center; break-inside: avoid; border: 0.5pt solid #ddd; padding: 3pt 4pt 2pt; border-radius: 2pt; }
+  .print-item svg, .print-item img { display: block; }
+  .print-item .bc-val { font-size: 5.5pt; color: #555; margin-top: 1pt; }
+  @page { size: A4 portrait; margin: 13mm 11mm 13mm 11mm; }
+}
+#print-area { display: none; }
+</style>
+</head>
+<body>
+<div class="screen-ui">
+
+  <header>
+    <div>
+      <h1 data-i18n="title">Générateur de codes-barres</h1>
+      <div class="subtitle" data-i18n="subtitle">Impression A4 — regroupé par famille</div>
+    </div>
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="lang-fr" onclick="setLang('fr')">FR</button>
+      <button class="lang-btn"        id="lang-en" onclick="setLang('en')">EN</button>
+    </div>
+  </header>
+
+  <!-- Scenario tabs -->
+  <div class="scenario-bar">
+    <button class="sc-tab active" data-sc="libre">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+      <span class="tab-label" data-i18n="tabLibre">Libre</span>
+    </button>
+    <button class="sc-tab rec" data-sc="reception">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/><path d="M8 7v4M6 9l2 2 2-2"/></svg>
+      <span class="tab-label" data-i18n="tabReception">Réception</span>
+    </button>
+    <button class="sc-tab pick" data-sc="picking">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/><path d="M3 4v8"/></svg>
+      <span class="tab-label" data-i18n="tabPicking">Préparation</span>
+    </button>
+  </div>
+
+  <div class="layout">
+
+    <!-- COL 1 : List / Scenario panel -->
+    <div class="col">
+
+      <!-- Libre: standard list panel -->
+      <div class="panel" id="panel-libre">
+        <div class="panel-title" data-i18n="listTitle">Liste de codes-barres</div>
+        <textarea id="input-text" spellcheck="false"></textarea>
+        <p class="hint" data-i18n="listHint">Les lignes commençant par <code>#</code> sont des familles. Tout le reste est un code-barres.</p>
+        <div id="error-msg"></div>
+        <div class="actions">
+            <button class="btn btn-dark"         id="btn-generate" data-i18n="btnGenerate">⚡ Générer</button>
+            <button class="btn btn-ghost btn-sm" id="btn-refresh"  data-i18n="btnRefresh">↺ Rafraîchir</button>
+            <button class="btn btn-green"        id="btn-print"    data-i18n="btnPrint">🖨 Imprimer A4</button>
+            <button class="btn btn-ghost btn-sm" id="btn-clear"    data-i18n="btnClear">✕ Effacer</button>
+        </div>
+        <div id="stats"></div>
+      </div>
+
+      <!-- Reception scenario panel -->
+      <div class="scenario-panel rec-panel" id="panel-reception">
+        <div class="panel-title rec" data-i18n="recTitle">📥 Réception — QUAI_REC → POUMON_REC</div>
+
+        <div class="wms-flow">
+          <span class="wms-node quai">QUAI_REC</span>
+          <span class="wms-arrow">→</span>
+          <span class="wms-node poumon-rec">POUMON_REC</span>
+        </div>
+
+        <div class="sc-section">
+          <div class="sc-section-title" data-i18n="recSecEmpl">Emplacements</div>
+          <div class="row2">
+            <div class="field">
+              <label class="field-label" data-i18n="recQuaiPrefix">Préfixe quai</label>
+              <input type="text" id="rec-quai-pfx" value="QUAI_REC-">
+            </div>
+            <div class="field">
+              <label class="field-label" data-i18n="recPoumonPrefix">Préfixe poumon</label>
+              <input type="text" id="rec-poumon-pfx" value="POUMON_REC-">
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label class="field-label" data-i18n="recNbQuai">Nb quais</label>
+              <input type="number" id="rec-nb-quai" value="2" min="1" max="20">
+            </div>
+            <div class="field">
+              <label class="field-label" data-i18n="recNbPoumon">Nb poumons</label>
+              <input type="number" id="rec-nb-poumon" value="2" min="1" max="20">
+            </div>
+          </div>
+        </div>
+
+        <div class="sc-section">
+          <div class="sc-section-title" data-i18n="recSecSupports">Supports</div>
+          <div class="row2">
+            <div class="field">
+              <label class="field-label" data-i18n="recSupportPrefix">Préfixe support</label>
+              <input type="text" id="rec-sup-pfx" value="PAL-REC-">
+            </div>
+            <div class="field">
+              <label class="field-label" data-i18n="recNbSupports">Nombre de supports</label>
+              <input type="number" id="rec-nb-sup" value="3" min="1" max="100">
+            </div>
+          </div>
+        </div>
+
+        <div class="sc-section">
+          <div class="sc-section-title" data-i18n="recSecArticles">Articles</div>
+          <div class="row2">
+            <div class="field">
+              <label class="field-label" data-i18n="recArticlePrefix">Préfixe article</label>
+              <input type="text" id="rec-art-pfx" value="REF-REC-">
+            </div>
+            <div class="field">
+              <label class="field-label" data-i18n="recNbArticles">Nombre d'articles</label>
+              <input type="number" id="rec-nb-art" value="5" min="1" max="200">
+            </div>
+          </div>
+        </div>
+
+        <div class="sc-preview-box" id="rec-preview-box" data-i18n-empty="recPreviewEmpty">—</div>
+
+        <div class="actions" style="margin-top:0.55rem;">
+          <button class="btn btn-orange btn-full" id="btn-rec-apply" data-i18n="recApply">📥 Appliquer la réception</button>
+        </div>
+        <p class="hint" style="margin-top:0.28rem;" data-i18n="recHint">Génère les emplacements, supports et articles et les injecte dans la liste.</p>
+      </div>
+
+      <!-- Picking scenario panel -->
+      <div class="scenario-panel pick-panel" id="panel-picking">
+        <div class="panel-title pick" data-i18n="pickTitle">📤 Préparation — Picking → POUMON_EXP</div>
+
+        <div class="wms-flow">
+          <span class="wms-node stock">Stock</span>
+          <span class="wms-arrow">→</span>
+          <span class="wms-node pick">Picking</span>
+          <span class="wms-arrow">→</span>
+          <span class="wms-node poumon-exp">POUMON_EXP</span>
+        </div>
+
+        <div class="sc-section">
+          <div class="sc-section-title" data-i18n="pickSecEmpl">Emplacements de picking</div>
+          <div class="row2">
+            <div class="field">
+              <label class="field-label" data-i18n="pickEmplPrefix">Préfixe emplacement</label>
+              <input type="text" id="pick-empl-pfx" value="PICK-">
+            </div>
+            <div class="field">
+              <label class="field-label" data-i18n="pickNbEmpl">Nombre d'emplacements</label>
+              <input type="number" id="pick-nb-empl" value="4" min="1" max="100">
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label class="field-label" data-i18n="pickPoumonPrefix">Préfixe poumon exp.</label>
+              <input type="text" id="pick-poumon-pfx" value="POUMON_EXP-">
+            </div>
+            <div class="field">
+              <label class="field-label" data-i18n="pickNbPoumon">Nb poumons exp.</label>
+              <input type="number" id="pick-nb-poumon" value="2" min="1" max="20">
+            </div>
+          </div>
+        </div>
+
+        <div class="sc-section">
+          <div class="sc-section-title" data-i18n="pickSecSupports">Supports d'expédition</div>
+          <div class="row2">
+            <div class="field">
+              <label class="field-label" data-i18n="pickSupportPrefix">Préfixe support</label>
+              <input type="text" id="pick-sup-pfx" value="CART-EXP-">
+            </div>
+            <div class="field">
+              <label class="field-label" data-i18n="pickNbSupports">Nombre de supports</label>
+              <input type="number" id="pick-nb-sup" value="3" min="1" max="100">
+            </div>
+          </div>
+        </div>
+
+        <div class="sc-section">
+          <div class="sc-section-title" data-i18n="pickSecArticles">Articles à préparer</div>
+          <div class="row2">
+            <div class="field">
+              <label class="field-label" data-i18n="pickArticlePrefix">Préfixe article</label>
+              <input type="text" id="pick-art-pfx" value="REF-PICK-">
+            </div>
+            <div class="field">
+              <label class="field-label" data-i18n="pickNbArticles">Nombre d'articles</label>
+              <input type="number" id="pick-nb-art" value="6" min="1" max="200">
+            </div>
+          </div>
+        </div>
+
+        <div class="sc-preview-box" id="pick-preview-box" data-i18n-empty="pickPreviewEmpty">—</div>
+
+        <div class="actions" style="margin-top:0.55rem;">
+          <button class="btn btn-purple btn-full" id="btn-pick-apply" data-i18n="pickApply">📤 Appliquer la préparation</button>
+        </div>
+        <p class="hint" style="margin-top:0.28rem;" data-i18n="pickHint">Génère les emplacements, supports et articles et les injecte dans la liste.</p>
+      </div>
+
+    </div><!-- /col 1 -->
+
+    <!-- COL 2 : Controls -->
+    <div class="col">
+      <div class="panel-stack">
+
+        <div class="sub-panel">
+          <div class="panel-title" data-i18n="addFamTitle">Ajouter une famille</div>
+          <div class="field">
+            <label class="field-label" for="fam-name" data-i18n="labelFamName">Nom de la famille</label>
+            <input type="text" id="fam-name" placeholder="ex. Pièces détachées">
+          </div>
+          <div class="field">
+            <label class="field-label" for="fam-codes" data-i18n="labelFamCodes">Codes (un par ligne, optionnel)</label>
+            <textarea class="fixed" id="fam-codes" placeholder="CODE-001&#10;CODE-002"></textarea>
+          </div>
+          <button class="btn btn-dark btn-full" id="btn-add-family" data-i18n="btnAddFamily">＋ Ajouter à la liste</button>
+        </div>
+
+        <div class="sub-panel">
+          <div class="panel-title" data-i18n="randTitle">Générateur de codes aléatoires</div>
+          <div class="field">
+            <label class="field-label" for="rand-family" data-i18n="labelTargetFamily">Famille cible</label>
+            <select id="rand-family"><option value="">— Générer d'abord —</option></select>
+          </div>
+          <div class="row2">
+            <div class="field"><label class="field-label" for="rand-count" data-i18n="labelCount">Nombre</label><input type="number" id="rand-count" value="5" min="1" max="500"></div>
+            <div class="field"><label class="field-label" for="rand-len" data-i18n="labelLength">Longueur</label><input type="number" id="rand-len" value="8" min="1" max="40"></div>
+          </div>
+          <div class="field">
+            <label class="field-label" data-i18n="labelCharset">Caractères</label>
+            <div class="charset-group">
+              <label class="charset-toggle on" id="cs-upper"><input type="checkbox" checked>A–Z</label>
+              <label class="charset-toggle on" id="cs-digits"><input type="checkbox" checked>0–9</label>
+              <label class="charset-toggle"    id="cs-lower"><input type="checkbox">a–z</label>
+              <label class="charset-toggle"    id="cs-dash"><input type="checkbox">–</label>
+            </div>
+          </div>
+          <div class="field"><label class="field-label" for="rand-prefix" data-i18n="labelPrefix">Préfixe (optionnel)</label><input type="text" id="rand-prefix" placeholder="ex. SKU-"></div>
+          <button class="btn btn-dark btn-full" id="btn-randomize" data-i18n="btnRandomize">🎲 Générer les codes aléatoires</button>
+          <p class="hint" style="margin-top:0.28rem;" data-i18n="randHint">Ajoutés à la famille sélectionnée.</p>
+        </div>
+
+        <div class="sub-panel">
+          <div class="panel-title" data-i18n="formatTitle">Format &amp; dimensions <span style="font-weight:400;opacity:.6;text-transform:none;letter-spacing:0;" data-i18n="formatTitleSub">(défaut)</span></div>
+          <div class="format-group">
+            <label class="format-option selected">
+              <input type="radio" name="bc-format" value="CODE128" checked>
+              <div class="fmt-row"><span class="fmt-name">Code 128</span><span class="fmt-tip" data-i18n="fmtCode128tip">Linéaire · alphanumérique</span></div>
+            </label>
+            <label class="format-option">
+              <input type="radio" name="bc-format" value="QR">
+              <div class="fmt-row"><span class="fmt-name">QR Code</span><span class="fmt-tip" data-i18n="fmtQRtip">2D · URL, texte long</span></div>
+            </label>
+            <label class="format-option">
+              <input type="radio" name="bc-format" value="DATAMATRIX">
+              <div class="fmt-row"><span class="fmt-name">Data Matrix</span><span class="fmt-tip" data-i18n="fmtDMtip">2D · petites étiquettes</span></div>
+            </label>
+          </div>
+          <div class="sep"></div>
+          <div class="row2">
+            <div class="field"><label class="field-label" for="bc-height" data-i18n="labelBarHeight">Hauteur (px)</label><input type="number" id="bc-height" value="40" min="20" max="120" step="5"></div>
+            <div class="field"><label class="field-label" for="bc-size" data-i18n="labelSize2D">Taille 2D (px)</label><input type="number" id="bc-size" value="64" min="30" max="200" step="4"></div>
+            <div class="field"><label class="field-label" for="bc-width" data-i18n="labelBarWidth">Largeur barre</label><input type="number" id="bc-width" value="1.5" min="0.8" max="4" step="0.1"></div>
+            <div class="field"><label class="field-label" for="bc-fontsize" data-i18n="labelFontSize">Texte (px)</label><input type="number" id="bc-fontsize" value="10" min="6" max="20" step="1"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- COL 3 : Preview -->
+    <div class="col">
+      <div class="panel">
+        <div class="panel-title" data-i18n="previewTitle">Aperçu</div>
+        <div class="preview-scroll" id="preview-area">
+          <div class="preview-empty" data-i18n="previewEmpty">Cliquez sur ⚡ Générer pour voir les codes ici</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>Vibe coded with ❤️ for <strong>MECALUX</strong></footer>
+<div id="print-area"></div>
+
+<script>
+(function () {
+
+  /* ══ i18n ══ */
+  const i18n = {
+    fr: {
+      title:'Générateur de codes-barres', subtitle:'Impression A4 — regroupé par famille',
+      listTitle:'Liste de codes-barres',
+      listHint:'Les lignes commençant par <code>#</code> sont des familles. Tout le reste est un code-barres.',
+      btnGenerate:'⚡ Générer', btnPrint:'🖨 Imprimer A4', btnClear:'✕ Effacer',
+      tabLibre:'Libre', tabReception:'Réception', tabPicking:'Préparation',
+      addFamTitle:'Ajouter une famille', labelFamName:'Nom de la famille',
+      labelFamCodes:'Codes (un par ligne, optionnel)', btnAddFamily:'＋ Ajouter à la liste',
+      famNamePh:'ex. Pièces détachées', famCodesPh:'CODE-001\nCODE-002', errFamName:'Entrez un nom de famille.',
+      randTitle:'Générateur de codes aléatoires', labelTargetFamily:'Famille cible',
+      familyPh:'— Générer d\'abord —', labelCount:'Nombre', labelLength:'Longueur',
+      labelCharset:'Caractères', labelPrefix:'Préfixe (optionnel)',
+      btnRandomize:'🎲 Générer les codes aléatoires', btnRefresh:'↺ Rafraîchir', randHint:'Ajoutés à la famille sélectionnée.',
+      errSelectFamily:'Veuillez sélectionner une famille cible.',
+      errSelectCharset:'Sélectionnez au moins un jeu de caractères.',
+      formatTitle:'Format & dimensions', formatTitleSub:'(défaut)',
+      fmtCode128tip:'Linéaire · alphanumérique', fmtQRtip:'2D · URL, texte long', fmtDMtip:'2D · petites étiquettes',
+      labelBarHeight:'Hauteur (px)', labelSize2D:'Taille 2D (px)', labelBarWidth:'Largeur barre', labelFontSize:'Texte (px)',
+      previewTitle:'Aperçu', previewEmpty:'Cliquez sur ⚡ Générer pour voir les codes ici',
+      statsMsg:(n,f)=>`<strong>${n}</strong> code${n>1?'s':''} dans <strong>${f}</strong> famille${f>1?'s':''}`,
+      statsFailed:(n)=>` — <span style="color:#c62828">${n} échoué${n>1?'s':''}</span>`,
+      errNothingToPrint:'Rien à imprimer — générez d\'abord.',
+      listPh:'# Famille1\ncode001\ncode002\n\n# Famille2\ncode010\ncode011', randPrefixPh:'ex. SKU-',
+      gearLabel:'Personnaliser', foTitle:'Paramètres de la famille',
+      foReset:'Réinitialiser', foBadge:'Perso',
+      foDimHeight:'Hauteur (px)', foDimSize:'Taille 2D (px)', foDimWidth:'Largeur barre', foDimFont:'Texte (px)',
+      // Réception
+      recTitle:'📥 Réception — QUAI_REC → POUMON_REC',
+      recSecEmpl:'Emplacements', recQuaiPrefix:'Préfixe quai', recPoumonPrefix:'Préfixe poumon',
+      recNbQuai:'Nb quais', recNbPoumon:'Nb poumons',
+      recSecSupports:'Supports', recSupportPrefix:'Préfixe support', recNbSupports:'Nombre de supports',
+      recSecArticles:'Articles', recArticlePrefix:'Préfixe article', recNbArticles:"Nombre d'articles",
+      recApply:'📥 Appliquer la réception',
+      recHint:'Génère les emplacements, supports et articles et les injecte dans la liste.',
+      recFamQuai:'Emplacements Quai', recFamPoumon:'Emplacements Poumon Réception',
+      recFamSup:'Supports Réception', recFamArt:'Articles Réception',
+      // Picking
+      pickTitle:'📤 Préparation — Picking → POUMON_EXP',
+      pickSecEmpl:'Emplacements de picking', pickEmplPrefix:'Préfixe emplacement', pickNbEmpl:"Nombre d'emplacements",
+      pickPoumonPrefix:'Préfixe poumon exp.', pickNbPoumon:'Nb poumons exp.',
+      pickSecSupports:"Supports d'expédition", pickSupportPrefix:'Préfixe support', pickNbSupports:'Nombre de supports',
+      pickSecArticles:'Articles à préparer', pickArticlePrefix:'Préfixe article', pickNbArticles:"Nombre d'articles",
+      pickApply:'📤 Appliquer la préparation',
+      pickHint:'Génère les emplacements, supports et articles et les injecte dans la liste.',
+      pickFamEmpl:'Emplacements Picking', pickFamPoumon:'Poumon Expédition',
+      pickFamSup:'Supports Expédition', pickFamArt:'Articles Préparation',
+    },
+    en: {
+      title:'Barcode Generator', subtitle:'A4 print — grouped by family',
+      listTitle:'Barcode list',
+      listHint:'Lines starting with <code>#</code> are family headings. Everything else is a barcode.',
+      btnGenerate:'⚡ Generate', btnPrint:'🖨 Print A4', btnClear:'✕ Clear',
+      tabLibre:'Free', tabReception:'Reception', tabPicking:'Picking',
+      addFamTitle:'Add a family', labelFamName:'Family name',
+      labelFamCodes:'Codes (one per line, optional)', btnAddFamily:'＋ Add to list',
+      famNamePh:'e.g. Spare Parts', famCodesPh:'CODE-001\nCODE-002', errFamName:'Please enter a family name.',
+      randTitle:'Random code generator', labelTargetFamily:'Target family',
+      familyPh:'— Generate first —', labelCount:'Count', labelLength:'Length',
+      labelCharset:'Characters', labelPrefix:'Prefix (optional)',
+      btnRandomize:'🎲 Generate random codes', btnRefresh:'↺ Refresh', randHint:'Appended to the selected family.',
+      errSelectFamily:'Please select a target family.',
+      errSelectCharset:'Select at least one character set.',
+      formatTitle:'Format & size', formatTitleSub:'(default)',
+      fmtCode128tip:'Linear · alphanumeric', fmtQRtip:'2D · URLs, long text', fmtDMtip:'2D · small labels',
+      labelBarHeight:'Height (px)', labelSize2D:'2D size (px)', labelBarWidth:'Bar width', labelFontSize:'Text (px)',
+      previewTitle:'Preview', previewEmpty:'Click ⚡ Generate to see barcodes here',
+      statsMsg:(n,f)=>`<strong>${n}</strong> code${n!==1?'s':''} in <strong>${f}</strong> famil${f===1?'y':'ies'}`,
+      statsFailed:(n)=>` — <span style="color:#c62828">${n} failed</span>`,
+      errNothingToPrint:'Nothing to print — generate first.',
+      listPh:'# Family1\nbarcode001\nbarcode002\n\n# Family2\nbarcode010\nbarcode011', randPrefixPh:'e.g. SKU-',
+      gearLabel:'Customise', foTitle:'Family settings',
+      foReset:'Reset', foBadge:'Custom',
+      foDimHeight:'Height (px)', foDimSize:'2D size (px)', foDimWidth:'Bar width', foDimFont:'Text (px)',
+      // Reception
+      recTitle:'📥 Reception — QUAI_REC → POUMON_REC',
+      recSecEmpl:'Locations', recQuaiPrefix:'Dock prefix', recPoumonPrefix:'Buffer prefix',
+      recNbQuai:'Nb docks', recNbPoumon:'Nb buffers',
+      recSecSupports:'Carriers', recSupportPrefix:'Carrier prefix', recNbSupports:'Number of carriers',
+      recSecArticles:'Items', recArticlePrefix:'Item prefix', recNbArticles:'Number of items',
+      recApply:'📥 Apply reception',
+      recHint:'Generates locations, carriers and items and injects them into the list.',
+      recFamQuai:'Dock Locations', recFamPoumon:'Reception Buffer Locations',
+      recFamSup:'Reception Carriers', recFamArt:'Reception Items',
+      // Picking
+      pickTitle:'📤 Picking — Pick locations → POUMON_EXP',
+      pickSecEmpl:'Pick locations', pickEmplPrefix:'Location prefix', pickNbEmpl:'Number of locations',
+      pickPoumonPrefix:'Exp. buffer prefix', pickNbPoumon:'Nb exp. buffers',
+      pickSecSupports:'Shipping carriers', pickSupportPrefix:'Carrier prefix', pickNbSupports:'Number of carriers',
+      pickSecArticles:'Items to pick', pickArticlePrefix:'Item prefix', pickNbArticles:'Number of items',
+      pickApply:'📤 Apply picking',
+      pickHint:'Generates locations, carriers and items and injects them into the list.',
+      pickFamEmpl:'Pick Locations', pickFamPoumon:'Shipping Buffer',
+      pickFamSup:'Shipping Carriers', pickFamArt:'Picking Items',
+    }
+  };
+
+  let lang='fr';
+  const t=(k,...a)=>{const v=i18n[lang][k];return typeof v==='function'?v(...a):(v??k);};
+
+  window.setLang=function(l){
+    lang=l; document.documentElement.lang=l;
+    document.getElementById('lang-fr').classList.toggle('active',l==='fr');
+    document.getElementById('lang-en').classList.toggle('active',l==='en');
+    applyTranslations(); if(parsedData.length) refreshStats();
+    refreshScenarioPreviews();
+  };
+
+  function applyTranslations(){
+    document.querySelectorAll('[data-i18n]').forEach(el=>{
+      const v=i18n[lang][el.dataset.i18n];
+      if(v!==undefined&&typeof v!=='function') el.innerHTML=v;
+    });
+    document.getElementById('input-text').placeholder  = t('listPh');
+    document.getElementById('fam-name').placeholder    = t('famNamePh');
+    document.getElementById('fam-codes').placeholder   = t('famCodesPh');
+    document.getElementById('rand-prefix').placeholder = t('randPrefixPh');
+    const sel=document.getElementById('rand-family');
+    if(sel.options[0]?.value==='') sel.options[0].text=t('familyPh');
+    const pe=document.querySelector('.preview-empty');
+    if(pe) pe.textContent=t('previewEmpty');
+  }
+
+  /* ══ Elements (declared early — used by scenario logic below) ══ */
+  const inputEl  = document.getElementById('input-text');
+  const previewEl= document.getElementById('preview-area');
+  const printEl  = document.getElementById('print-area');
+  const statsEl  = document.getElementById('stats');
+  const errorEl  = document.getElementById('error-msg');
+  const heightEl = document.getElementById('bc-height');
+  const sizeEl   = document.getElementById('bc-size');
+  const widthEl  = document.getElementById('bc-width');
+  const fontEl   = document.getElementById('bc-fontsize');
+  const famSelEl = document.getElementById('rand-family');
+
+  let parsedData = [];
+  let lastStats  = {total:0,fams:0,errors:0};
+  let familyOpts = {};
+
+  /* ══ Scenario tabs ══ */
+  let currentScenario = 'libre';
+  document.querySelectorAll('.sc-tab').forEach(tab=>{
+    tab.addEventListener('click',()=>{
+      currentScenario = tab.dataset.sc;
+      document.querySelectorAll('.sc-tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      // Show correct left panel
+      document.getElementById('panel-libre').style.display     = currentScenario==='libre'     ? 'flex' : 'none';
+      document.getElementById('panel-reception').classList.toggle('active', currentScenario==='reception');
+      document.getElementById('panel-picking').classList.toggle('active',   currentScenario==='picking');
+      refreshScenarioPreviews();
+    });
+  });
+
+  /* ══ Scenario code builders ══ */
+  function seq(prefix, n){ return Array.from({length:n},(_,i)=>prefix+String(i+1).padStart(3,'0')); }
+
+  function buildReceptionText(){
+    const quaiPfx   = document.getElementById('rec-quai-pfx').value  || 'QUAI_REC-';
+    const poumonPfx = document.getElementById('rec-poumon-pfx').value || 'POUMON_REC-';
+    const supPfx    = document.getElementById('rec-sup-pfx').value   || 'PAL-REC-';
+    const artPfx    = document.getElementById('rec-art-pfx').value   || 'REF-REC-';
+    const nbQuai    = Math.max(1,parseInt(document.getElementById('rec-nb-quai').value)||2);
+    const nbPoumon  = Math.max(1,parseInt(document.getElementById('rec-nb-poumon').value)||2);
+    const nbSup     = Math.max(1,parseInt(document.getElementById('rec-nb-sup').value)||3);
+    const nbArt     = Math.max(1,parseInt(document.getElementById('rec-nb-art').value)||5);
+
+    const blocks = [
+      { fam: t('recFamQuai'),   codes: seq(quaiPfx, nbQuai) },
+      { fam: t('recFamPoumon'), codes: seq(poumonPfx, nbPoumon) },
+      { fam: t('recFamSup'),    codes: seq(supPfx, nbSup) },
+      { fam: t('recFamArt'),    codes: seq(artPfx, nbArt) },
+    ];
+    return blocks;
+  }
+
+  function buildPickingText(){
+    const emplPfx   = document.getElementById('pick-empl-pfx').value   || 'PICK-';
+    const poumonPfx = document.getElementById('pick-poumon-pfx').value  || 'POUMON_EXP-';
+    const supPfx    = document.getElementById('pick-sup-pfx').value    || 'CART-EXP-';
+    const artPfx    = document.getElementById('pick-art-pfx').value    || 'REF-PICK-';
+    const nbEmpl    = Math.max(1,parseInt(document.getElementById('pick-nb-empl').value)||4);
+    const nbPoumon  = Math.max(1,parseInt(document.getElementById('pick-nb-poumon').value)||2);
+    const nbSup     = Math.max(1,parseInt(document.getElementById('pick-nb-sup').value)||3);
+    const nbArt     = Math.max(1,parseInt(document.getElementById('pick-nb-art').value)||6);
+
+    const blocks = [
+      { fam: t('pickFamEmpl'),   codes: seq(emplPfx, nbEmpl) },
+      { fam: t('pickFamPoumon'), codes: seq(poumonPfx, nbPoumon) },
+      { fam: t('pickFamSup'),    codes: seq(supPfx, nbSup) },
+      { fam: t('pickFamArt'),    codes: seq(artPfx, nbArt) },
+    ];
+    return blocks;
+  }
+
+  function blocksToText(blocks){
+    return blocks.map(b=>`# ${b.fam}\n${b.codes.join('\n')}`).join('\n\n');
+  }
+
+  function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+  function blocksToHtml(blocks){
+    return blocks.map(b=>{
+      const codes = b.codes.slice(0,4).map(c=>`<span class="code">${esc(c)}</span>`).join('\n');
+      const more  = b.codes.length>4 ? `<span class="code" style="color:#aaa">  … +${b.codes.length-4}</span>` : '';
+      return `<span class="fam"># ${esc(b.fam)}</span>\n${codes}${more}`;
+    }).join('\n\n');
+  }
+
+  function refreshScenarioPreviews(){
+    if(currentScenario==='reception'){
+      const blocks = buildReceptionText();
+      document.getElementById('rec-preview-box').innerHTML = blocksToHtml(blocks);
+    }
+    if(currentScenario==='picking'){
+      const blocks = buildPickingText();
+      document.getElementById('pick-preview-box').innerHTML = blocksToHtml(blocks);
+    }
+  }
+
+  // Live update preview on any scenario input change
+  document.querySelectorAll('#panel-reception input, #panel-picking input').forEach(inp=>{
+    inp.addEventListener('input', refreshScenarioPreviews);
+  });
+
+  // Apply buttons
+  document.getElementById('btn-rec-apply').addEventListener('click',()=>{
+    const text = blocksToText(buildReceptionText());
+    const cur  = inputEl.value.trimEnd();
+    inputEl.value = cur ? cur+'\n\n'+text : text;
+    // switch back to libre tab to show the list
+    document.querySelector('.sc-tab[data-sc="libre"]').click();
+    generate();
+  });
+
+  document.getElementById('btn-pick-apply').addEventListener('click',()=>{
+    const text = blocksToText(buildPickingText());
+    const cur  = inputEl.value.trimEnd();
+    inputEl.value = cur ? cur+'\n\n'+text : text;
+    document.querySelector('.sc-tab[data-sc="libre"]').click();
+    generate();
+  });
+
+  /* Format radio */
+  document.querySelectorAll('.format-option').forEach(opt=>{
+    opt.addEventListener('click',()=>{
+      document.querySelectorAll('.format-option').forEach(o=>o.classList.remove('selected'));
+      opt.classList.add('selected');
+      if(parsedData.length) generate();
+    });
+  });
+  const getGlobalFormat=()=>document.querySelector('input[name="bc-format"]:checked')?.value||'CODE128';
+
+  function getGlobalOpts(){ return { format:getGlobalFormat(), height:parseInt(heightEl.value)||40, barWidth:parseFloat(widthEl.value)||1.5, fontSize:parseInt(fontEl.value)||10, size:parseInt(sizeEl.value)||64 }; }
+
+  function getOptsForFamily(name){
+    const g=getGlobalOpts(), o=familyOpts[name];
+    if(!o) return g;
+    return { format:o.format??g.format, height:o.height??g.height, barWidth:o.barWidth??g.barWidth, fontSize:o.fontSize??g.fontSize, size:o.size??g.size };
+  }
+
+  function hasOverride(name){ const o=familyOpts[name]; return o&&Object.values(o).some(v=>v!==null&&v!==undefined); }
+
+  /* Charset toggles */
+  document.querySelectorAll('.charset-toggle').forEach(el=>{
+    el.addEventListener('click',e=>{ e.preventDefault(); const cb=el.querySelector('input'); cb.checked=!cb.checked; el.classList.toggle('on',cb.checked); });
+  });
+
+  // small debounce helper to avoid heavy regen on every keystroke
+  function debounce(fn,wait){let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn.apply(this,a),wait);};}
+
+  // regenerate when the textarea changes, but debounce to keep UI snappy
+  inputEl.addEventListener('input', debounce(()=>{ generate(); }, 300));
+
+  /* Parse */
+  function parseInput(raw){
+    const lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+    const fams=[]; let cur=null;
+    for(const line of lines){
+      if(line.startsWith('#')){cur={name:line.replace(/^#+\s*/,'')||'Unnamed',codes:[]};fams.push(cur);}
+      else{if(!cur){cur={name:'Default',codes:[]};fams.push(cur);}cur.codes.push(line);}
+    }
+    return fams;
+  }
+
+  /* Barcode makers (unified) */
+  function makeBarcode(val,opts,small){
+    const format = (opts && opts.format) ? opts.format : 'CODE128';
+    try{
+      if(format==='CODE128'){
+        const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+        const h = small?Math.round(opts.height*0.65):opts.height;
+        const w = small?Math.max(.8,opts.barWidth*0.8):opts.barWidth;
+        const fs= small?Math.max(6,opts.fontSize-2):opts.fontSize;
+        JsBarcode(svg, val, { format: 'CODE128', height: h, width: w, fontSize: fs, margin: small?3:5, displayValue:true, lineColor:'#000000', background:'#ffffff' });
+        return { el: svg, ok: true };
+      } else {
+        const canvas = document.createElement('canvas');
+        const size = small?Math.round(opts.size*0.68):opts.size;
+        const scale = Math.max(1, Math.round(size/38));
+        const dim = Math.round(size/3.78);
+        bwipjs.toCanvas(canvas, { bcid: format==='QR' ? 'qrcode' : 'datamatrix', text: val, scale: scale, height: dim, width: dim, includetext:false, backgroundcolor:'ffffff' });
+        return { el: canvas, ok: true };
+      }
+    }catch(e){ return { el: null, ok: false }; }
+  }
+
+  /* Override panel builder */
+  function buildOverridePanel(famName){
+    const o=familyOpts[famName]||{}, g=getGlobalOpts();
+    const wrapper=document.createElement('div'); wrapper.className='family-override'; wrapper.dataset.fam=famName;
+    const titleRow=document.createElement('div'); titleRow.className='fo-title';
+    titleRow.innerHTML=`<span>${t('foTitle')}: <em style="font-style:normal">${famName}</em></span>`;
+    const resetBtn=document.createElement('button'); resetBtn.className='fo-reset'; resetBtn.textContent=t('foReset');
+    resetBtn.addEventListener('click',()=>{ delete familyOpts[famName]; generate(); });
+    titleRow.appendChild(resetBtn); wrapper.appendChild(titleRow);
+    const fmtRow=document.createElement('div'); fmtRow.className='fo-fmt';
+    [['CODE128','Code 128'],['QR','QR Code'],['DATAMATRIX','Data Matrix']].forEach(([val,label])=>{
+      const btn=document.createElement('button'); btn.className='fo-fmt-btn'+((o.format||null)===val?' sel':''); btn.textContent=label;
+      btn.addEventListener('click',()=>{ if(!familyOpts[famName])familyOpts[famName]={}; familyOpts[famName].format=familyOpts[famName].format===val?null:val; generate(); });
+      fmtRow.appendChild(btn);
+    });
+    wrapper.appendChild(fmtRow);
+    const dims=document.createElement('div'); dims.className='fo-dims';
+    [['height',t('foDimHeight'),20,120,5,o.height??''],['size',t('foDimSize'),30,200,4,o.size??''],['barWidth',t('foDimWidth'),.8,4,.1,o.barWidth??''],['fontSize',t('foDimFont'),6,20,1,o.fontSize??'']].forEach(([key,lbl,mn,mx,st,val])=>{
+      const f=document.createElement('div'); f.className='fo-dim-field';
+      const l=document.createElement('label'); l.textContent=lbl;
+      const inp=document.createElement('input'); inp.type='number'; inp.min=mn; inp.max=mx; inp.step=st; inp.placeholder=String(g[key]||'');
+      if(val!=='') inp.value=val;
+      inp.addEventListener('change',()=>{ if(!familyOpts[famName])familyOpts[famName]={}; const p=key==='barWidth'?parseFloat(inp.value):parseInt(inp.value); familyOpts[famName][key]=isNaN(p)||inp.value===''?null:p; generate(); });
+      f.appendChild(l); f.appendChild(inp); dims.appendChild(f);
+    });
+    wrapper.appendChild(dims); return wrapper;
+  }
+
+  /* Generate */
+  function generate(){
+    errorEl.textContent='';
+    const raw=inputEl.value;
+    if(!raw.trim()){ previewEl.innerHTML=`<div class="preview-empty">${t('previewEmpty')}</div>`; statsEl.innerHTML=''; parsedData=[]; refreshFamilyDropdown(); return; }
+    parsedData=parseInput(raw);
+    const openPanels=new Set(); previewEl.querySelectorAll('.family-override.open').forEach(p=>openPanels.add(p.dataset.fam));
+    let total=0,errors=0;
+    const pFrag=document.createDocumentFragment(), prFrag=document.createDocumentFragment();
+    for(const fam of parsedData){
+      if(!fam.codes.length) continue;
+      const opts=getOptsForFamily(fam.name);
+      const pBlock=document.createElement('div');
+      const header=document.createElement('div'); header.className='preview-family-header';
+      const nameSpan=document.createElement('span'); nameSpan.className='preview-family-name'; nameSpan.textContent=fam.name;
+      if(hasOverride(fam.name)){ const badge=document.createElement('span'); badge.className='override-badge'; badge.textContent=t('foBadge'); nameSpan.appendChild(badge); }
+      header.appendChild(nameSpan);
+      const gearBtn=document.createElement('button'); gearBtn.className='btn-gear';
+      gearBtn.innerHTML=`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1.5h3l.5 1.5a5 5 0 011.2.7l1.5-.3 1.5 2.6-1.1 1.1a5 5 0 010 1.8l1.1 1.1-1.5 2.6-1.5-.3a5 5 0 01-1.2.7l-.5 1.5h-3l-.5-1.5A5 5 0 014.8 13l-1.5.3L1.8 10.7l1.1-1.1a5 5 0 010-1.8L1.8 6.7l1.5-2.6 1.5.3A5 5 0 016 3l.5-1.5z"/><circle cx="8" cy="8" r="2"/></svg>${t('gearLabel')}`;
+      if(hasOverride(fam.name)) gearBtn.classList.add('active');
+      const overridePanel=buildOverridePanel(fam.name);
+      if(openPanels.has(fam.name)){overridePanel.classList.add('open'); gearBtn.classList.add('active');}
+      gearBtn.addEventListener('click',()=>{ overridePanel.classList.toggle('open'); gearBtn.classList.toggle('active',overridePanel.classList.contains('open')||hasOverride(fam.name)); });
+      header.appendChild(gearBtn); pBlock.appendChild(header); pBlock.appendChild(overridePanel);
+      const pC=document.createElement('div'); pC.className='preview-barcodes';
+      const prS=document.createElement('div'); prS.className='print-family-section';
+      const prT=document.createElement('div'); prT.className='print-family-title'; prT.textContent=fam.name; prS.appendChild(prT);
+      const prC=document.createElement('div'); prC.className='print-barcodes';
+      for(const code of fam.codes){
+        total++;
+        const{el,ok}=makeBarcode(code,opts,true);
+        const pi=document.createElement('div'); pi.className='preview-item';
+        if(ok){pi.appendChild(el);}else{errors++;const e=document.createElement('div');e.style.cssText='color:#c62828;font-size:.58rem;padding:3px 2px;max-width:76px;';e.textContent='⚠ '+code;pi.appendChild(e);}
+        const lb=document.createElement('div'); lb.className='bc-label'; lb.textContent=code;
+        pi.appendChild(lb); pC.appendChild(pi);
+        const{el:pEl,ok:pOk}=makeBarcode(code,opts,false);
+        if(pOk){
+          const pri=document.createElement('div'); pri.className='print-item';
+          if(pEl.tagName==='CANVAS'){const img=document.createElement('img');img.src=pEl.toDataURL();img.width=pEl.width;img.height=pEl.height;pri.appendChild(img);}else{pri.appendChild(pEl);}
+          const v=document.createElement('div'); v.className='bc-val'; v.textContent=code;
+          pri.appendChild(v); prC.appendChild(pri);
+        }
+      }
+      pBlock.appendChild(pC); pFrag.appendChild(pBlock);
+      prS.appendChild(prC); prFrag.appendChild(prS);
+    }
+    previewEl.innerHTML=''; previewEl.appendChild(pFrag);
+    printEl.innerHTML=''; printEl.appendChild(prFrag);
+    lastStats={total,fams:parsedData.filter(f=>f.codes.length).length,errors};
+    refreshStats(); refreshFamilyDropdown();
+  }
+
+  function refreshStats(){ const{total,fams,errors}=lastStats; if(!total&&!fams){statsEl.innerHTML='';return;} statsEl.innerHTML=t('statsMsg',total,fams)+(errors?t('statsFailed',errors):''); }
+
+  function refreshFamilyDropdown(){
+    // preserve previous selection by family name when possible
+    const prevName = famSelEl.options[famSelEl.selectedIndex]?.dataset?.name || '';
+    famSelEl.innerHTML='';
+    const ph=document.createElement('option'); ph.value=''; ph.textContent=t('familyPh'); famSelEl.appendChild(ph);
+    parsedData.forEach((f,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=`${f.name} (${f.codes.length})`; o.dataset.name = f.name; famSelEl.appendChild(o);});
+    if(prevName){
+      const match = Array.from(famSelEl.options).find(o=>o.dataset && o.dataset.name===prevName);
+      if(match) famSelEl.value = match.value;
+    }
+  }
+
+  document.getElementById('btn-add-family').addEventListener('click',()=>{
+    const name=document.getElementById('fam-name').value.trim();
+    if(!name){errorEl.textContent=t('errFamName');document.getElementById('fam-name').focus();return;}
+    errorEl.textContent='';
+    const codes=document.getElementById('fam-codes').value.trim()?document.getElementById('fam-codes').value.split('\n').map(l=>l.trim()).filter(Boolean):[];
+    const cur=inputEl.value.trimEnd();
+    inputEl.value=(cur?cur+'\n\n':'')+`# ${name}`+(codes.length?'\n'+codes.join('\n'):'');
+    document.getElementById('fam-name').value=''; document.getElementById('fam-codes').value='';
+    generate();
+  });
+
+  document.getElementById('btn-randomize').addEventListener('click',()=>{
+    const idx=parseInt(famSelEl.value);
+    if(isNaN(idx)||famSelEl.value===''){errorEl.textContent=t('errSelectFamily');return;}
+    const count=Math.max(1,parseInt(document.getElementById('rand-count').value)||5);
+    const len=Math.max(1,parseInt(document.getElementById('rand-len').value)||8);
+    const pfx=document.getElementById('rand-prefix').value;
+    let cs='';
+    if(document.querySelector('#cs-upper input').checked) cs+='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    if(document.querySelector('#cs-digits input').checked) cs+='0123456789';
+    if(document.querySelector('#cs-lower input').checked) cs+='abcdefghijklmnopqrstuvwxyz';
+    if(document.querySelector('#cs-dash input').checked) cs+='-';
+    if(!cs){errorEl.textContent=t('errSelectCharset');return;}
+    const newCodes=[];
+    for(let i=0;i<count;i++){let c=pfx;for(let j=0;j<len;j++)c+=cs[Math.floor(Math.random()*cs.length)];newCodes.push(c);}
+    const target=parsedData[idx].name;
+    const lines=inputEl.value.split('\n'); let ins=-1,inT=false;
+    for(let i=0;i<lines.length;i++){const l=lines[i].trim();if(l.startsWith('#')&&l.replace(/^#+\s*/,'')=== target){inT=true;ins=i;}else if(inT){if(l.startsWith('#'))break;if(l)ins=i;}}
+    if(ins>=0){lines.splice(ins+1,0,...newCodes);inputEl.value=lines.join('\n');}else inputEl.value+='\n'+newCodes.join('\n');
+    generate(); famSelEl.value=String(idx);
+  });
+
+  // generate / refresh buttons
+  document.getElementById('btn-generate')?.addEventListener('click',()=>{ generate(); });
+  document.getElementById('btn-refresh')?.addEventListener('click',()=>{ generate(); });
+
+  document.getElementById('btn-print').addEventListener('click',()=>{
+    if(!parsedData.length) generate();
+    if(!printEl.children.length){errorEl.textContent=t('errNothingToPrint');return;}
+    window.print();
+  });
+
+  document.getElementById('btn-clear').addEventListener('click',()=>{
+    inputEl.value=''; document.getElementById('fam-name').value=''; document.getElementById('fam-codes').value='';
+    previewEl.innerHTML=`<div class="preview-empty">${t('previewEmpty')}</div>`;
+    printEl.innerHTML=''; statsEl.innerHTML=''; errorEl.textContent='';
+    parsedData=[]; familyOpts={}; lastStats={total:0,fams:0,errors:0}; refreshFamilyDropdown();
+  });
+
+  [heightEl,sizeEl,widthEl,fontEl].forEach(el=>el.addEventListener('change',()=>{if(parsedData.length)generate();}));
+
+  /* Init */
+  applyTranslations();
+  inputEl.value='# Emplacement\nALL-01-A-001\nALL-01-A-002\nALL-02-B-003\n\n# Support\nPAL-2024-001\nPAL-2024-002\nBAC-2024-015\n\n# Article\nREF-VISSERIE-M6\nREF-ROULEMENT-6205\nREF-JOINT-NBR-40\n\n# Numéro de série\nSN-2024-00142\nSN-2024-00143\nSN-2024-00144';
+  generate();
+  refreshScenarioPreviews();
+})();
+</script>
+</body>
+</html>
