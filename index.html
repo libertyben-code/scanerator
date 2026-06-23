@@ -64,7 +64,7 @@ header h1 { font-size: clamp(0.95rem, 2vw, 1.25rem); font-weight: 700; letter-sp
 
 /* ── Panels ── */
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 0.85rem; display: flex; flex-direction: column; flex: 1; min-height: 0; box-shadow: var(--shadow); }
-.panel-stack { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.panel-stack { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
 .sub-panel { background: var(--surface); border: 1px solid var(--border); border-bottom: none; padding: 0.75rem 0.85rem; }
 .sub-panel:first-child { border-radius: var(--r) var(--r) 0 0; }
 .sub-panel:last-child  { border-radius: 0 0 var(--r) var(--r); border-bottom: 1px solid var(--border); flex: 1; box-shadow: var(--shadow); }
@@ -233,11 +233,12 @@ footer strong { color: var(--muted); font-weight: 600; }
   <header>
     <div>
       <h1 data-i18n="title">SCANERATOR - Générateur de codes-barres</h1>
-      <div class="subtitle" data-i18n="subtitle">Impression A4 — regroupé par famille - v1.0</div>
+      <div class="subtitle" data-i18n="subtitle">Impression A4 — regroupé par famille - v1.1</div>
     </div>
     <div class="lang-toggle">
       <button class="lang-btn active" id="lang-fr" onclick="setLang('fr')">FR</button>
       <button class="lang-btn"        id="lang-en" onclick="setLang('en')">EN</button>
+      <button class="lang-btn"        id="lang-es" onclick="setLang('es')">ES</button>
     </div>
   </header>
 
@@ -446,7 +447,17 @@ footer strong { color: var(--muted); font-weight: 600; }
           </div>
           <div class="row2">
             <div class="field"><label class="field-label" for="rand-count" data-i18n="labelCount">Nombre</label><input type="number" id="rand-count" value="5" min="1" max="500"></div>
-            <div class="field"><label class="field-label" for="rand-len" data-i18n="labelLength">Longueur</label><input type="number" id="rand-len" value="8" min="1" max="40"></div>
+            <div class="field"><label class="field-label" for="rand-len" id="label-rand-len" data-i18n="labelLength">Longueur</label><input type="number" id="rand-len" value="8" min="1" max="40"></div>
+          </div>
+          <div class="field">
+            <div class="charset-group">
+              <label class="charset-toggle on" id="cs-random" data-mode="randmode"><input type="radio" name="rand-mode" id="rand-mode-random" value="random" checked><span data-i18n="labelRandom">Aléatoire</span></label>
+              <label class="charset-toggle"    id="cs-sequential" data-mode="randmode"><input type="radio" name="rand-mode" id="rand-mode-seq" value="sequential"><span data-i18n="labelSequential">Séquentiel</span></label>
+            </div>
+          </div>
+          <div class="row2" id="rand-seq-fields" style="display:none">
+            <div class="field"><label class="field-label" for="rand-start" data-i18n="labelStart">Début</label><input type="number" id="rand-start" value="1" min="0"></div>
+            <div class="field"><label class="field-label" for="rand-seq-digits" data-i18n="labelSeqDigits">Nb chiffres séq.</label><input type="number" id="rand-seq-digits" value="3" min="1" max="20"></div>
           </div>
           <div class="field">
             <label class="field-label" data-i18n="labelCharset">Caractères</label>
@@ -457,7 +468,10 @@ footer strong { color: var(--muted); font-weight: 600; }
               <label class="charset-toggle"    id="cs-dash"><input type="checkbox">–</label>
             </div>
           </div>
-          <div class="field"><label class="field-label" for="rand-prefix" data-i18n="labelPrefix">Préfixe (optionnel)</label><input type="text" id="rand-prefix" placeholder="ex. SKU-"></div>
+          <div class="row2">
+            <div class="field"><label class="field-label" for="rand-prefix" data-i18n="labelPrefix">Préfixe</label><input type="text" id="rand-prefix" placeholder="ex. SKU-"></div>
+            <div class="field"><label class="field-label" for="rand-suffix" data-i18n="labelSuffix">Suffixe</label><input type="text" id="rand-suffix" placeholder="ex. -A"></div>
+          </div>
           <button class="btn btn-dark btn-full" id="btn-randomize" data-i18n="btnRandomize">🎲 Générer les codes aléatoires</button>
           <p class="hint" style="margin-top:0.28rem;" data-i18n="randHint">Ajoutés à la famille sélectionnée.</p>
         </div>
@@ -512,7 +526,7 @@ footer strong { color: var(--muted); font-weight: 600; }
   /* ══ i18n ══ */
   const i18n = {
     fr: {
-      title:'SCANERATOR - Générateur de codes-barres', subtitle:'Impression A4 — regroupé par famille - v1.0',
+      title:'SCANERATOR - Générateur de codes-barres', subtitle:'Impression A4 — regroupé par famille - v1.1',
       listTitle:'Liste de codes-barres',
       listHint:'Les lignes commençant par <code>#</code> sont des familles. Tout le reste est un code-barres.',
       btnGenerate:'⚡ Générer', btnPrint:'🖨 Imprimer A4', btnClear:'✕ Effacer',
@@ -522,8 +536,10 @@ footer strong { color: var(--muted); font-weight: 600; }
       famNamePh:'ex. Pièces détachées', famCodesPh:'CODE-001\nCODE-002', errFamName:'Entrez un nom de famille.',
       randTitle:'Générateur de codes aléatoires', labelTargetFamily:'Famille cible',
       familyPh:'— Générer d\'abord —', labelCount:'Nombre', labelLength:'Longueur',
-      labelCharset:'Caractères', labelPrefix:'Préfixe (optionnel)',
-      btnRandomize:'🎲 Générer les codes aléatoires', btnRefresh:'↺ Rafraîchir', randHint:'Ajoutés à la famille sélectionnée.',
+      labelCharset:'Caractères', labelPrefix:'Préfixe', labelSuffix:'Suffixe',
+      labelRandom:'Aléatoire', labelSequential:'Séquentiel', labelStart:'Début', labelSeqDigits:'Nb chiffres séq.', labelLengthSeq:'Nb chiffres',
+      btnRandomize:'🎲 Générer les codes aléatoires', btnRandomizeSeq:'🔢 Générer les codes séquentiels',
+      btnRefresh:'↺ Rafraîchir', randHint:'Ajoutés à la famille sélectionnée.',
       errSelectFamily:'Veuillez sélectionner une famille cible.',
       errSelectCharset:'Sélectionnez au moins un jeu de caractères.',
       formatTitle:'Format & dimensions', formatTitleSub:'(défaut)',
@@ -533,7 +549,7 @@ footer strong { color: var(--muted); font-weight: 600; }
       statsMsg:(n,f)=>`<strong>${n}</strong> code${n>1?'s':''} dans <strong>${f}</strong> famille${f>1?'s':''}`,
       statsFailed:(n)=>` — <span style="color:#c62828">${n} échoué${n>1?'s':''}</span>`,
       errNothingToPrint:'Rien à imprimer — générez d\'abord.',
-      listPh:'# Famille1\ncode001\ncode002\n\n# Famille2\ncode010\ncode011', randPrefixPh:'ex. SKU-',
+      listPh:'# Famille1\ncode001\ncode002\n\n# Famille2\ncode010\ncode011', randPrefixPh:'ex. SKU-', randSuffixPh:'ex. -A',
       gearLabel:'Personnaliser', foTitle:'Paramètres de la famille',
       foReset:'Réinitialiser', foBadge:'Perso',
       foDimHeight:'Hauteur (px)', foDimSize:'Taille 2D (px)', foDimWidth:'Largeur barre', foDimFont:'Texte (px)',
@@ -559,7 +575,7 @@ footer strong { color: var(--muted); font-weight: 600; }
       pickFamSup:'Supports Expédition', pickFamArt:'Articles Préparation',
     },
     en: {
-      title:'SCANERATOR - Barcode Generator', subtitle:'A4 print — grouped by family - v1.0',
+      title:'SCANERATOR - Barcode Generator', subtitle:'A4 print — grouped by family - v1.1',
       listTitle:'Barcode list',
       listHint:'Lines starting with <code>#</code> are family headings. Everything else is a barcode.',
       btnGenerate:'⚡ Generate', btnPrint:'🖨 Print A4', btnClear:'✕ Clear',
@@ -569,8 +585,10 @@ footer strong { color: var(--muted); font-weight: 600; }
       famNamePh:'e.g. Spare Parts', famCodesPh:'CODE-001\nCODE-002', errFamName:'Please enter a family name.',
       randTitle:'Random code generator', labelTargetFamily:'Target family',
       familyPh:'— Generate first —', labelCount:'Count', labelLength:'Length',
-      labelCharset:'Characters', labelPrefix:'Prefix (optional)',
-      btnRandomize:'🎲 Generate random codes', btnRefresh:'↺ Refresh', randHint:'Appended to the selected family.',
+      labelCharset:'Characters', labelPrefix:'Prefix', labelSuffix:'Suffix',
+      labelRandom:'Random', labelSequential:'Sequential', labelStart:'Start', labelSeqDigits:'Seq. digits', labelLengthSeq:'Digits',
+      btnRandomize:'🎲 Generate random codes', btnRandomizeSeq:'🔢 Generate sequential codes',
+      btnRefresh:'↺ Refresh', randHint:'Appended to the selected family.',
       errSelectFamily:'Please select a target family.',
       errSelectCharset:'Select at least one character set.',
       formatTitle:'Format & size', formatTitleSub:'(default)',
@@ -580,7 +598,7 @@ footer strong { color: var(--muted); font-weight: 600; }
       statsMsg:(n,f)=>`<strong>${n}</strong> code${n!==1?'s':''} in <strong>${f}</strong> famil${f===1?'y':'ies'}`,
       statsFailed:(n)=>` — <span style="color:#c62828">${n} failed</span>`,
       errNothingToPrint:'Nothing to print — generate first.',
-      listPh:'# Family1\nbarcode001\nbarcode002\n\n# Family2\nbarcode010\nbarcode011', randPrefixPh:'e.g. SKU-',
+      listPh:'# Family1\nbarcode001\nbarcode002\n\n# Family2\nbarcode010\nbarcode011', randPrefixPh:'e.g. SKU-', randSuffixPh:'e.g. -A',
       gearLabel:'Customise', foTitle:'Family settings',
       foReset:'Reset', foBadge:'Custom',
       foDimHeight:'Height (px)', foDimSize:'2D size (px)', foDimWidth:'Bar width', foDimFont:'Text (px)',
@@ -604,6 +622,55 @@ footer strong { color: var(--muted); font-weight: 600; }
       pickHint:'Generates locations, carriers and items and injects them into the list.',
       pickFamEmpl:'Pick Locations', pickFamPoumon:'Shipping Buffer',
       pickFamSup:'Shipping Carriers', pickFamArt:'Picking Items',
+    },
+    es: {
+      title:'SCANERATOR - Generador de códigos de barras', subtitle:'Impresión A4 — agrupado por familia - v1.1',
+      listTitle:'Lista de códigos de barras',
+      listHint:'Las líneas que empiezan por <code>#</code> son familias. El resto son códigos de barras.',
+      btnGenerate:'⚡ Generar', btnPrint:'🖨 Imprimir A4', btnClear:'✕ Borrar',
+      tabLibre:'Libre', tabReception:'Recepción', tabPicking:'Preparación',
+      addFamTitle:'Añadir una familia', labelFamName:'Nombre de la familia',
+      labelFamCodes:'Códigos (uno por línea, opcional)', btnAddFamily:'＋ Añadir a la lista',
+      famNamePh:'ej. Piezas de repuesto', famCodesPh:'CODIGO-001\nCODIGO-002', errFamName:'Introduzca un nombre de familia.',
+      randTitle:'Generador de códigos aleatorios', labelTargetFamily:'Familia destino',
+      familyPh:'— Generar primero —', labelCount:'Cantidad', labelLength:'Longitud',
+      labelCharset:'Caracteres', labelPrefix:'Prefijo', labelSuffix:'Sufijo',
+      labelRandom:'Aleatorio', labelSequential:'Secuencial', labelStart:'Inicio', labelSeqDigits:'Nº díg. seq.', labelLengthSeq:'Nº dígitos',
+      btnRandomize:'🎲 Generar códigos aleatorios', btnRandomizeSeq:'🔢 Generar códigos secuenciales',
+      btnRefresh:'↺ Actualizar', randHint:'Añadidos a la familia seleccionada.',
+      errSelectFamily:'Seleccione una familia destino.',
+      errSelectCharset:'Seleccione al menos un conjunto de caracteres.',
+      formatTitle:'Formato y dimensiones', formatTitleSub:'(predeterminado)',
+      fmtCode128tip:'Lineal · alfanumérico', fmtQRtip:'2D · URLs, texto largo', fmtDMtip:'2D · etiquetas pequeñas',
+      labelBarHeight:'Altura (px)', labelSize2D:'Tamaño 2D (px)', labelBarWidth:'Ancho barra', labelFontSize:'Texto (px)',
+      previewTitle:'Vista previa', previewEmpty:'Haga clic en ⚡ Generar para ver los códigos aquí',
+      statsMsg:(n,f)=>`<strong>${n}</strong> código${n!==1?'s':''} en <strong>${f}</strong> familia${f!==1?'s':''}`,
+      statsFailed:(n)=>` — <span style="color:#c62828">${n} fallido${n!==1?'s':''}</span>`,
+      errNothingToPrint:'Nada que imprimir — genere primero.',
+      listPh:'# Familia1\ncodigo001\ncodigo002\n\n# Familia2\ncodigo010\ncodigo011', randPrefixPh:'ej. SKU-', randSuffixPh:'ej. -A',
+      gearLabel:'Personalizar', foTitle:'Ajustes de la familia',
+      foReset:'Restablecer', foBadge:'Perso',
+      foDimHeight:'Altura (px)', foDimSize:'Tamaño 2D (px)', foDimWidth:'Ancho barra', foDimFont:'Texto (px)',
+      // Recepción
+      recTitle:'📥 Recepción — QUAI_REC → POUMON_REC',
+      recSecEmpl:'Ubicaciones', recQuaiPrefix:'Prefijo muelle', recPoumonPrefix:'Prefijo pulmón',
+      recNbQuai:'Nº muelles', recNbPoumon:'Nº pulmones',
+      recSecSupports:'Soportes', recSupportPrefix:'Prefijo soporte', recNbSupports:'Número de soportes',
+      recSecArticles:'Artículos', recArticlePrefix:'Prefijo artículo', recNbArticles:'Número de artículos',
+      recApply:'📥 Aplicar recepción',
+      recHint:'Genera ubicaciones, soportes y artículos y los inyecta en la lista.',
+      recFamQuai:'Ubicaciones Muelle', recFamPoumon:'Ubicaciones Pulmón Recepción',
+      recFamSup:'Soportes Recepción', recFamArt:'Artículos Recepción',
+      // Preparación
+      pickTitle:'📤 Preparación — Picking → POUMON_EXP',
+      pickSecEmpl:'Ubicaciones de picking', pickEmplPrefix:'Prefijo ubicación', pickNbEmpl:'Número de ubicaciones',
+      pickPoumonPrefix:'Prefijo pulmón exp.', pickNbPoumon:'Nº pulmones exp.',
+      pickSecSupports:'Soportes de expedición', pickSupportPrefix:'Prefijo soporte', pickNbSupports:'Número de soportes',
+      pickSecArticles:'Artículos a preparar', pickArticlePrefix:'Prefijo artículo', pickNbArticles:'Número de artículos',
+      pickApply:'📤 Aplicar preparación',
+      pickHint:'Genera ubicaciones, soportes y artículos y los inyecta en la lista.',
+      pickFamEmpl:'Ubicaciones Picking', pickFamPoumon:'Pulmón Expedición',
+      pickFamSup:'Soportes Expedición', pickFamArt:'Artículos Preparación',
     }
   };
 
@@ -614,6 +681,7 @@ footer strong { color: var(--muted); font-weight: 600; }
     lang=l; document.documentElement.lang=l;
     document.getElementById('lang-fr').classList.toggle('active',l==='fr');
     document.getElementById('lang-en').classList.toggle('active',l==='en');
+    document.getElementById('lang-es').classList.toggle('active',l==='es');
     applyTranslations(); if(parsedData.length) refreshStats();
     refreshScenarioPreviews();
   };
@@ -627,6 +695,7 @@ footer strong { color: var(--muted); font-weight: 600; }
     document.getElementById('fam-name').placeholder    = t('famNamePh');
     document.getElementById('fam-codes').placeholder   = t('famCodesPh');
     document.getElementById('rand-prefix').placeholder = t('randPrefixPh');
+    document.getElementById('rand-suffix').placeholder = t('randSuffixPh');
     const sel=document.getElementById('rand-family');
     if(sel.options[0]?.value==='') sel.options[0].text=t('familyPh');
     const pe=document.querySelector('.preview-empty');
@@ -774,7 +843,35 @@ footer strong { color: var(--muted); font-weight: 600; }
 
   /* Charset toggles */
   document.querySelectorAll('.charset-toggle').forEach(el=>{
+    if(el.dataset.mode) return;
     el.addEventListener('click',e=>{ e.preventDefault(); const cb=el.querySelector('input'); cb.checked=!cb.checked; el.classList.toggle('on',cb.checked); });
+  });
+
+  /* Random / Sequential mode pills */
+  function isSeqMode(){ return document.getElementById('rand-mode-seq').checked; }
+
+  function updateRandMode(){
+    const isSeq = isSeqMode();
+    document.getElementById('rand-seq-fields').style.display = isSeq ? '' : 'none';
+    const randBtn = document.getElementById('btn-randomize');
+    randBtn.dataset.i18n = isSeq ? 'btnRandomizeSeq' : 'btnRandomize';
+    randBtn.textContent  = t(isSeq ? 'btnRandomizeSeq' : 'btnRandomize');
+  }
+
+  document.getElementById('cs-random').addEventListener('click', e=>{
+    e.preventDefault();
+    document.getElementById('rand-mode-random').checked = true;
+    document.getElementById('cs-random').classList.add('on');
+    document.getElementById('cs-sequential').classList.remove('on');
+    updateRandMode();
+  });
+
+  document.getElementById('cs-sequential').addEventListener('click', e=>{
+    e.preventDefault();
+    document.getElementById('rand-mode-seq').checked = true;
+    document.getElementById('cs-sequential').classList.add('on');
+    document.getElementById('cs-random').classList.remove('on');
+    updateRandMode();
   });
 
   // small debounce helper to avoid heavy regen on every keystroke
@@ -927,6 +1024,7 @@ footer strong { color: var(--muted); font-weight: 600; }
     const count=Math.max(1,parseInt(document.getElementById('rand-count').value)||5);
     const len=Math.max(1,parseInt(document.getElementById('rand-len').value)||8);
     const pfx=document.getElementById('rand-prefix').value;
+    const sfx=document.getElementById('rand-suffix').value;
     let cs='';
     if(document.querySelector('#cs-upper input').checked) cs+='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     if(document.querySelector('#cs-digits input').checked) cs+='0123456789';
@@ -934,7 +1032,18 @@ footer strong { color: var(--muted); font-weight: 600; }
     if(document.querySelector('#cs-dash input').checked) cs+='-';
     if(!cs){errorEl.textContent=t('errSelectCharset');return;}
     const newCodes=[];
-    for(let i=0;i<count;i++){let c=pfx;for(let j=0;j<len;j++)c+=cs[Math.floor(Math.random()*cs.length)];newCodes.push(c);}
+    if(isSeqMode()){
+      const start=Math.max(0,parseInt(document.getElementById('rand-start').value)||1);
+      const seqDigits=Math.max(1,parseInt(document.getElementById('rand-seq-digits').value)||3);
+      for(let i=0;i<count;i++){
+        let c=pfx;
+        for(let j=0;j<len;j++) c+=cs[Math.floor(Math.random()*cs.length)];
+        c+=String(start+i).padStart(seqDigits,'0');
+        newCodes.push(c+sfx);
+      }
+    } else {
+      for(let i=0;i<count;i++){let c=pfx;for(let j=0;j<len;j++)c+=cs[Math.floor(Math.random()*cs.length)];newCodes.push(c+sfx);}
+    }
     const target=parsedData[idx].name;
     const lines=inputEl.value.split('\n'); let ins=-1,inT=false;
     for(let i=0;i<lines.length;i++){const l=lines[i].trim();if(l.startsWith('#')&&l.replace(/^#+\s*/,'')=== target){inT=true;ins=i;}else if(inT){if(l.startsWith('#'))break;if(l)ins=i;}}

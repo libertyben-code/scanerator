@@ -1,5 +1,6 @@
 # scanerator
 Because real WMS pros don't just scan — they generate.
+
 ---
 
 ## 🇫🇷 Français
@@ -14,11 +15,13 @@ Because real WMS pros don't just scan — they generate.
 - **Organisation par familles** : regroupez vos codes par catégorie (Emplacement, Support, Article, Numéro de série…)
 - **Paramètres par famille** : format et dimensions personnalisables famille par famille
 - **Générateur aléatoire** : injectez des codes générés automatiquement dans une famille existante
+- **Génération séquentielle** : générez des codes avec un compteur incrémental (ex. `ABCD001`, `ABCD002`…)
+- **Préfixe et suffixe** : encadrez chaque code généré avec du texte fixe
 - **2 scénarios WMS préconfigurés** :
   - 📥 **Réception** : génère automatiquement les emplacements `QUAI_REC`, `POUMON_REC`, supports et articles
   - 📤 **Préparation** : génère les emplacements de picking, `POUMON_EXP`, supports et articles
 - **Impression A4** : mise en page optimisée, regroupée par famille, prête à imprimer
-- **Bilingue FR / EN** : toute l'interface bascule en un clic
+- **Trilingue FR / EN / ES** : toute l'interface bascule en un clic
 - **Responsive** : utilisable sur desktop, tablette et mobile
 - **Aucune installation** : un seul fichier `.html`, fonctionne hors-ligne après le premier chargement
 
@@ -57,25 +60,14 @@ Les lignes commençant par `#` définissent une **famille**. Toutes les autres l
 | Article | `REF-VISSERIE-M6` | Référence article avec désignation |
 | Numéro de série | `SN-2024-00142` | Traçabilité unitaire avec millésime |
 
-### Scénario Réception
+### Génération aléatoire et séquentielle
 
-L'onglet **Réception** (orange) génère automatiquement 4 familles pour le flux `QUAI_REC → POUMON_REC` :
+Le générateur de codes dispose de deux modes :
 
-1. **Emplacements Quai** — positions de déchargement (ex. `QUAI_REC-001`)
-2. **Emplacements Poumon Réception** — tampon avant stockage (ex. `POUMON_REC-001`)
-3. **Supports Réception** — palettes et bacs entrants (ex. `PAL-REC-001`)
-4. **Articles Réception** — références à réceptionner (ex. `REF-REC-001`)
+- **Aléatoire** : génère N codes de longueur L à partir du jeu de caractères sélectionné (A–Z, 0–9, a–z, –)
+- **Séquentiel** : génère N codes composés de L caractères aléatoires suivis d'un compteur zero-paddé (ex. `ABC001`, `DEF002`…)
 
-Paramétrable : préfixes, nombre de quais, nombre de poumons, nombre de supports, nombre d'articles.
-
-### Scénario Préparation
-
-L'onglet **Préparation** (violet) génère automatiquement 4 familles pour le flux `Stock → Picking → POUMON_EXP` :
-
-1. **Emplacements Picking** — allées de prélèvement (ex. `PICK-001`)
-2. **Poumon Expédition** — zone tampon sortie (ex. `POUMON_EXP-001`)
-3. **Supports Expédition** — colis et cartons (ex. `CART-EXP-001`)
-4. **Articles Préparation** — références à prélever (ex. `REF-PICK-001`)
+Dans les deux modes, un **Préfixe** et un **Suffixe** optionnels encadrent chaque code.
 
 ### Formats de codes-barres
 
@@ -84,17 +76,6 @@ L'onglet **Préparation** (violet) génère automatiquement 4 familles pour le f
 | **Code 128** | Linéaire | Codes alphanumériques, emplacements, numéros de série. Meilleur choix polyvalent. |
 | **QR Code** | 2D matriciel | Données volumineuses, URLs, texte long. Lisible par smartphone. |
 | **Data Matrix** | 2D matriciel | Empreinte compacte. Idéal pour petites étiquettes et marquage industriel. |
-
-### Personnalisation par famille
-
-Dans l'aperçu, chaque famille dispose d'un bouton **⚙ Personnaliser** permettant de définir un format et des dimensions spécifiques, indépendamment des paramètres globaux.
-
-### Impression
-
-1. Cliquer sur **🖨 Imprimer A4**
-2. Dans la boîte de dialogue du navigateur, vérifier : format **A4**, orientation **Portrait**
-3. Désactiver les en-têtes/pieds de page du navigateur pour un rendu plus propre
-4. Pour enregistrer en PDF, sélectionner **Enregistrer en PDF** comme imprimante
 
 ### Technologies
 
@@ -119,11 +100,13 @@ Aucun framework JavaScript, aucune dépendance npm. Le fichier est entièrement 
 - **Family organisation**: group barcodes by category (Location, Carrier, Item, Serial number…)
 - **Per-family settings**: format and dimensions customisable per family
 - **Random code generator**: inject auto-generated codes into any existing family
+- **Sequential generation**: generate codes with an incremental counter (e.g. `ABCD001`, `ABCD002`…)
+- **Prefix and suffix**: wrap every generated code with fixed text
 - **2 preconfigured WMS scenarios**:
   - 📥 **Reception**: auto-generates `QUAI_REC`, `POUMON_REC` locations, carriers and items
   - 📤 **Picking**: auto-generates pick locations, `POUMON_EXP`, shipping carriers and items
 - **A4 printing**: optimised layout grouped by family, print-ready
-- **Bilingual FR / EN**: full interface switches in one click
+- **Trilingual FR / EN / ES**: full interface switches in one click
 - **Responsive**: works on desktop, tablet and mobile
 - **Zero installation**: single `.html` file, works offline after first load
 
@@ -153,34 +136,14 @@ barcode011
 
 Lines starting with `#` define a **family**. All other non-empty lines are **barcode values**.
 
-### Default WMS families
+### Random and sequential generation
 
-| Family | Example format | Use |
-|---|---|---|
-| Location | `ALL-01-A-001` | Aisle-level-column-position addressing |
-| Carrier | `PAL-2024-001` | Pallet and bin identification |
-| Item | `REF-VISSERIE-M6` | Item reference with description |
-| Serial number | `SN-2024-00142` | Unit traceability with year |
+The code generator has two modes:
 
-### Reception scenario
+- **Random**: generates N codes of length L drawn from the selected charset (A–Z, 0–9, a–z, –)
+- **Sequential**: generates N codes made of L random characters followed by a zero-padded counter (e.g. `ABC001`, `DEF002`…)
 
-The **Reception** tab (orange) auto-generates 4 families for the `QUAI_REC → POUMON_REC` flow:
-
-1. **Dock Locations** — unloading positions (e.g. `QUAI_REC-001`)
-2. **Reception Buffer Locations** — buffer before put-away (e.g. `POUMON_REC-001`)
-3. **Reception Carriers** — inbound pallets and bins (e.g. `PAL-REC-001`)
-4. **Reception Items** — items to be received (e.g. `REF-REC-001`)
-
-Configurable: prefixes, number of docks, number of buffers, number of carriers, number of items.
-
-### Picking scenario
-
-The **Picking** tab (purple) auto-generates 4 families for the `Stock → Picking → POUMON_EXP` flow:
-
-1. **Pick Locations** — pick aisles (e.g. `PICK-001`)
-2. **Shipping Buffer** — outbound staging area (e.g. `POUMON_EXP-001`)
-3. **Shipping Carriers** — parcels and cartons (e.g. `CART-EXP-001`)
-4. **Picking Items** — items to be picked (e.g. `REF-PICK-001`)
+In both modes, an optional **Prefix** and **Suffix** wrap each generated code.
 
 ### Barcode formats
 
@@ -189,17 +152,6 @@ The **Picking** tab (purple) auto-generates 4 families for the `Stock → Pickin
 | **Code 128** | Linear | Alphanumeric codes, locations, serial numbers. Best general-purpose choice. |
 | **QR Code** | 2D matrix | Large payloads, URLs, long text. Scannable by any smartphone. |
 | **Data Matrix** | 2D matrix | Compact footprint. Ideal for small labels and industrial marking. |
-
-### Per-family customisation
-
-In the preview panel, each family has a **⚙ Customise** button allowing format and dimension overrides independent of the global settings.
-
-### Printing
-
-1. Click **🖨 Print A4**
-2. In the browser print dialog, confirm: format **A4**, orientation **Portrait**
-3. Disable browser headers/footers for a cleaner result
-4. To save as PDF, select **Save as PDF** as the printer
 
 ### Tech stack
 
@@ -212,18 +164,94 @@ No JavaScript framework, no npm dependencies. The file is fully self-contained.
 
 ---
 
-## Fichiers / Files
+## 🇪🇸 Español
+
+### Presentación
+
+**SCANERATOR** es una herramienta autónoma de generación de códigos de barras diseñada para entornos WMS (Sistema de Gestión de Almacenes). Se trata de un único archivo HTML, sin instalación, que se abre directamente en cualquier navegador web.
+
+### Funcionalidades
+
+- **3 formatos de código de barras**: Code 128 (lineal), QR Code, Data Matrix
+- **Organización por familias**: agrupe sus códigos por categoría (Ubicación, Soporte, Artículo, Número de serie…)
+- **Ajustes por familia**: formato y dimensiones personalizables por familia
+- **Generador aleatorio**: inyecte códigos generados automáticamente en cualquier familia existente
+- **Generación secuencial**: genere códigos con un contador incremental (ej. `ABCD001`, `ABCD002`…)
+- **Prefijo y sufijo**: encuadre cada código generado con texto fijo
+- **2 escenarios WMS preconfigurados**:
+  - 📥 **Recepción**: genera automáticamente ubicaciones `QUAI_REC`, `POUMON_REC`, soportes y artículos
+  - 📤 **Preparación**: genera ubicaciones de picking, `POUMON_EXP`, soportes de expedición y artículos
+- **Impresión A4**: maquetación optimizada, agrupada por familia, lista para imprimir
+- **Trilingüe FR / EN / ES**: toda la interfaz cambia en un clic
+- **Responsive**: utilizable en escritorio, tableta y móvil
+- **Sin instalación**: un único archivo `.html`, funciona sin conexión tras la primera carga
+
+### Requisitos
+
+- Un navegador web moderno: **Chrome 80+**, **Edge 80+** o **Firefox 75+**
+- Conexión a internet únicamente en el **primer inicio** (para cargar las bibliotecas JsBarcode y bwip-js desde un CDN — se almacenan en caché después)
+
+### Inicio
+
+Use directamente la versión desplegada:
+👉 **[Abrir SCANERATOR](https://libertyben-code.github.io/scanerator/)**
+
+### Formato de la lista
+
+La zona de entrada principal acepta una lista simple, un elemento por línea:
+
+```
+# NombreFamilia
+codigo001
+codigo002
+
+# OtraFamilia
+codigo010
+codigo011
+```
+
+Las líneas que comienzan por `#` definen una **familia**. Todas las demás líneas no vacías son **valores de código de barras**.
+
+### Generación aleatoria y secuencial
+
+El generador de códigos dispone de dos modos:
+
+- **Aleatorio**: genera N códigos de longitud L extraídos del juego de caracteres seleccionado (A–Z, 0–9, a–z, –)
+- **Secuencial**: genera N códigos compuestos de L caracteres aleatorios seguidos de un contador con ceros a la izquierda (ej. `ABC001`, `DEF002`…)
+
+En ambos modos, un **Prefijo** y un **Sufijo** opcionales encuadran cada código generado.
+
+### Formatos de código de barras
+
+| Formato | Tipo | Recomendado para |
+|---|---|---|
+| **Code 128** | Lineal | Códigos alfanuméricos, ubicaciones, números de serie. Mejor opción polivalente. |
+| **QR Code** | Matricial 2D | Datos voluminosos, URLs, texto largo. Legible con cualquier smartphone. |
+| **Data Matrix** | Matricial 2D | Huella compacta. Ideal para etiquetas pequeñas y marcado industrial. |
+
+### Tecnologías
+
+| Biblioteca | Versión | Uso |
+|---|---|---|
+| [JsBarcode](https://github.com/lindell/JsBarcode) | 3.11.6 | Generación Code 128 (SVG) |
+| [bwip-js](https://github.com/metafloor/bwip-js) | 4.5.1 | Generación QR Code y Data Matrix (Canvas) |
+
+Sin framework JavaScript, sin dependencias npm. El archivo es completamente autónomo.
+
+---
+
+## Fichiers / Files / Archivos
 
 ```
 scanerator/
-├── barcode-generator.html   # Application principale / Main application
-├── README.md                # Ce fichier / This file
-└── scanerator-poster.html   # Poster publicitaire / Advertising poster (optional)
+├── index.html        # Application / App / Aplicación
+├── README.md         # Ce fichier / This file / Este archivo
+└── docs/             # Documentation développeur / Developer docs / Documentación para desarrolladores
 ```
 
 ---
 
-## Compatibilité / Compatibility
+## Compatibilité / Compatibility / Compatibilidad
 
 | | Chrome | Edge | Firefox | Safari |
 |---|---|---|---|---|
@@ -233,4 +261,4 @@ scanerator/
 
 ---
 
-*Vibe coded with ❤️
+*Vibe coded with ❤️*
